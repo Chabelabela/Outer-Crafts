@@ -1,0 +1,7 @@
+{
+  "id": "brittle_hollow",
+  "surface_gravity": 0.075,
+  "radius": 120.0,
+  "base_position": [-1100.0, 100.0, 1905.255894],
+  "parent_id": "sun"
+}

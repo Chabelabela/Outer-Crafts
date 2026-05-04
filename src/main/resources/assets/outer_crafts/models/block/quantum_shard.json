@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "outer_crafts:block/quantum_shard"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "id": "hollows_lantern",
+  "surface_gravity": 0.04,
+  "radius": 38.0,
+  "base_position": [-900.0, 100.0, 1905.255894],
+  "parent_id": "brittle_hollow"
+}

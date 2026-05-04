@@ -1,0 +1,7 @@
+{
+  "id": "ember_twin",
+  "surface_gravity": 0.05,
+  "radius": 65.0,
+  "base_position": [580.0, 100.0, 0.0],
+  "parent_id": "twin_center"
+}

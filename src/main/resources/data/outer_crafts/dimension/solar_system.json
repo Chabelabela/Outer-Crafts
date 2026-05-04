@@ -1,0 +1,10 @@
+{
+  "type": "outer_crafts:solar_system",
+  "generator": {
+    "type": "outer_crafts:solar_system",
+    "biome_source": {
+      "type": "minecraft:fixed",
+      "biome": "outer_crafts:space"
+    }
+  }
+}

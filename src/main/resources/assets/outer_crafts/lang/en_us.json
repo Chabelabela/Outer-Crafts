@@ -1,0 +1,83 @@
+{
+  "item.outer_crafts.spacesuit_helmet": "Spacesuit Helmet",
+  "item.outer_crafts.spacesuit_chestplate": "Spacesuit (Integrated Jetpack)",
+  "item.outer_crafts.spacesuit_leggings": "Spacesuit Leggings",
+  "item.outer_crafts.spacesuit_boots": "Spacesuit Boots",
+  "item.outer_crafts.signalscope": "Signalscope",
+  "item.outer_crafts.scout_launcher": "Scout Launcher",
+  "item.outer_crafts.translator_tool": "Translator Tool",
+  "item.outer_crafts.oxygen_tank": "Oxygen Tank",
+  "item.outer_crafts.fuel_canister": "Fuel Canister",
+
+  "block.outer_crafts.nomai_text_wall": "Nomai Text Wall",
+  "block.outer_crafts.oxygen_refill_station": "Oxygen Refill Station",
+  "block.outer_crafts.fuel_refill_station": "Fuel Refill Station",
+  "block.outer_crafts.quantum_shard": "Quantum Shard",
+  "block.outer_crafts.memory_statue": "Memory Statue",
+
+  "item.outer_crafts.advanced_warp_drive": "Advanced Warp Drive",
+
+  "entity.outer_crafts.scout": "Little Scout",
+  "entity.outer_crafts.ship": "Ship",
+  "entity.outer_crafts.anglerfish": "Anglerfish",
+
+  "key.outer_crafts.jetpack_toggle": "Toggle Jetpack",
+  "key.outer_crafts.strafe_left": "Ship Strafe Left",
+  "key.outer_crafts.strafe_right": "Ship Strafe Right",
+  "key.outer_crafts.ship_log": "Open Ship Log",
+  "key.categories.outer_crafts": "Outer Crafts",
+
+  "itemGroup.outer_crafts.outer_crafts": "Outer Crafts",
+
+  "hud.outer_crafts.oxygen": "O2",
+  "hud.outer_crafts.fuel": "FUEL",
+  "hud.outer_crafts.jetpack_active": "[JETPACK]",
+
+  "hud.outer_crafts.ship.fuel": "FUEL",
+  "hud.outer_crafts.ship.velocity": "%.1f m/s",
+  "hud.outer_crafts.ship.landed": "LANDED",
+  "hud.outer_crafts.ship.engine_active": "ENGINE ACTIVE",
+  "hud.outer_crafts.ship.destroyed": "!! SHIP DESTROYED !!",
+  "hud.outer_crafts.ship.hull_critical": "WARNING: HULL CRITICAL",
+  "hud.outer_crafts.ship.instruments_offline": "!! INSTRUMENTS OFFLINE !!",
+  "hud.outer_crafts.ship.component.hull": "HULL",
+  "hud.outer_crafts.ship.component.engine": "ENGINE",
+  "hud.outer_crafts.ship.component.left_thruster": "L-THRUST",
+  "hud.outer_crafts.ship.component.right_thruster": "R-THRUST",
+  "hud.outer_crafts.ship.component.cockpit": "COCKPIT",
+  "hud.outer_crafts.ship.component.oxygen_module": "O2 MOD",
+  "hud.outer_crafts.ship.component.offline": "OFFLINE",
+  "hud.outer_crafts.ship.component.percent": "%.0f%%",
+
+  "hud.outer_crafts.signalscope.tuned": "§7TUNED: §b%s",
+  "hud.outer_crafts.signalscope.no_signal": "[Signalscope] No signal detected on %s",
+  "hud.outer_crafts.signalscope.cycled": "[Signalscope] Frequency: %s",
+
+  "hud.outer_crafts.translator.new_entry": "-- NEW ENTRY --",
+
+  "hud.outer_crafts.scout.photo_taken": "[Scout] Photo taken.",
+  "hud.outer_crafts.scout.quantum_locked": "[Scout] Quantum object observed and locked!",
+  "hud.outer_crafts.scout.recalled": "[Scout] Recalled.",
+  "hud.outer_crafts.scout.launched": "[Scout] Launched!",
+
+  "hud.outer_crafts.timeloop.waking_up": "Waking up...",
+  "hud.outer_crafts.shiplog.title": "Ship Log",
+  "hud.outer_crafts.shiplog.title.rumor": "SHIP LOG - RUMOR MODE",
+  "hud.outer_crafts.shiplog.title.map": "SHIP LOG - MAP MODE",
+  "hud.outer_crafts.shiplog.stats": "Loop #%d | Rumors: %d | Locations: %d | Texts: %d",
+  "hud.outer_crafts.shiplog.button.rumor": "Rumor Mode",
+  "hud.outer_crafts.shiplog.button.map": "Map Mode",
+
+  "message.outer_crafts.pillar6.welcome": "§6Wake up. The cosmos awaits.",
+
+  "message.outer_crafts.warp_drive.incomplete": "§7[Warp Drive] §oThe coordinates feel incomplete. (Rumors: %d/%d  Texts: %d/%d)",
+  "message.outer_crafts.warp_drive.unbuilt": "§b[Warp Drive] §7The Eye reaches back, but the path is not yet built.",
+  "message.outer_crafts.warp_drive.success": "§b[Warp Drive] §6You step beyond the loop.",
+
+  "message.outer_crafts.memory_statue.paired": "§b[Memory Statue] §7You feel a connection. The statue will remember you.",
+  "message.outer_crafts.memory_statue.unpaired": "§7[Memory Statue] §7The connection fades.",
+
+  "message.outer_crafts.ship.no_damage": "§7[Ship] No damage detected.",
+  "message.outer_crafts.ship.repaired": "§a[Ship] Repaired %s (+%d HP)",
+  "message.outer_crafts.ship.destroyed": "§c[Ship] CRITICAL FAILURE - Ship destroyed!"
+}

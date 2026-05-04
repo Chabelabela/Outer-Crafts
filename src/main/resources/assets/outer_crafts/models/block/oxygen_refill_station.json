@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "outer_crafts:block/oxygen_refill_station"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "timber_hearth",
+  "surface_gravity": 0.08,
+  "radius": 110.0,
+  "base_position": [800.0, 100.0, 1385.640646],
+  "orbital_radius": 0.0,
+  "orbital_period": 0,
+  "orbital_phase": 0.0,
+  "parent_id": "sun"
+}

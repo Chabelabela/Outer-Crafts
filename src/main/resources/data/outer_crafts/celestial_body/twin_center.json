@@ -1,0 +1,7 @@
+{
+  "id": "twin_center",
+  "surface_gravity": 0.0,
+  "radius": 0.0,
+  "base_position": [700.0, 100.0, 0.0],
+  "parent_id": "sun"
+}

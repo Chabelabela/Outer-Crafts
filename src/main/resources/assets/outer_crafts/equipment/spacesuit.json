@@ -1,0 +1,14 @@
+{
+  "layers": {
+    "humanoid": [
+      {
+        "texture": "outer_crafts:spacesuit"
+      }
+    ],
+    "humanoid_leggings": [
+      {
+        "texture": "outer_crafts:spacesuit"
+      }
+    ]
+  }
+}

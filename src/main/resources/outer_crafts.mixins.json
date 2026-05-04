@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "org.chabelabela.outer_crafts.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "LivingEntityGravityMixin",
+    "EntityMoveMixin",
+    "PlayerOrientationMixin"
+  ],
+  "client": [
+    "client.CameraOrientationMixin",
+    "client.ShipDismountMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

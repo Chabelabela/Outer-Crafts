@@ -1,0 +1,6 @@
+{
+  "id": "sun",
+  "surface_gravity": 0.18,
+  "radius": 180.0,
+  "base_position": [0.0, 100.0, 0.0]
+}

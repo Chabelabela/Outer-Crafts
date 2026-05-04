@@ -1,0 +1,7 @@
+{
+  "id": "quantum_moon",
+  "surface_gravity": 0.04,
+  "radius": 55.0,
+  "base_position": [0.0, 100.0, 1100.0],
+  "parent_id": "sun"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "dark_bramble",
+  "surface_gravity": 0.06,
+  "radius": 130.0,
+  "base_position": [-1838.477631, 100.0, -1838.477631],
+  "parent_id": "sun"
+}
