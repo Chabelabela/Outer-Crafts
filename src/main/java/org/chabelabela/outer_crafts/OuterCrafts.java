@@ -154,7 +154,11 @@ public class OuterCrafts {
         }
 
         @SubscribeEvent
-        public static void onRenderLevelStage(RenderLevelStageEvent.AfterTranslucentBlocks event) {
+        public static void onRenderLevelStage(RenderLevelStageEvent.AfterSky event) {
+            // Render planets as 3D spheres at their actual world positions,
+            // after the vanilla sky pass and before world geometry — so they
+            // sit behind solid blocks (correct occlusion) but in front of the
+            // void/star backdrop.
             SpaceSkyRenderer.onRenderLevelStage(event);
         }
     }

@@ -1,21 +1,16 @@
-# MacOS DS_Store files
+# Hide every root-level file/dir except source and essential build infrastructure.
+# AI guides, scratch scripts, PDFs, backup dirs, etc. stay local — not for the public repo.
+/*
+!/.gitignore
+!/build.gradle
+!/gradle/
+!/gradle.properties
+!/gradlew
+!/gradlew.bat
+!/settings.gradle
+!/src/
+
+# These can show up anywhere in the tree — keep them ignored regardless
 .DS_Store
-
-# Gradle cache folder
-.gradle
-
-# Gradle build folder
-build
-
-# IntelliJ
-out/
-.idea
-*.iml
-# mpeltonen/sbt-idea plugin
-.idea_modules/
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
-
-# Common working directory
-run
+*.iml

@@ -1,6 +1,6 @@
 {
   "id": "giants_deep",
-  "surface_gravity": 0.12,
+  "surface_gravity": 0.14,
   "radius": 160.0,
   "base_position": [-2200.0, 100.0, 0.0],
   "orbital_radius": 0.0,

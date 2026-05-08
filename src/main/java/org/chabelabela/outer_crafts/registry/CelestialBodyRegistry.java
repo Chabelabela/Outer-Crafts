@@ -149,10 +149,11 @@ public final class CelestialBodyRegistry {
                 0, 0L, 0.0, "twin_center"
         ));
 
-        // ── Timber Hearth: starting world, vanilla-feel gravity ─────────────────
+        // ── Timber Hearth: starting world, slightly heavier than vanilla
+        //   so the player feels firmly stuck without floaty hopping ─────────────
         register(new CelestialBody(
                 "timber_hearth",
-                /* surfaceGravity */ 0.08, /* radius */ 110.0,
+                /* surfaceGravity */ 0.10, /* radius */ 110.0,
                 new Vec3(800.0, Y, 1385.640646),
                 0, 0L, 0.0, "sun"
         ));
@@ -174,7 +175,7 @@ public final class CelestialBodyRegistry {
         // ── Giant's Deep: ocean gas-giant, heavy gravity ────────────────────────
         register(new CelestialBody(
                 "giants_deep",
-                /* surfaceGravity */ 0.12, /* radius */ 160.0,
+                /* surfaceGravity */ 0.14, /* radius */ 160.0,
                 new Vec3(-2200.0, Y, 0.0),
                 0, 0L, 0.0, "sun"
         ));

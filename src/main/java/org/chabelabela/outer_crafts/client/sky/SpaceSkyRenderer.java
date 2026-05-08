@@ -17,46 +17,38 @@ import org.chabelabela.outer_crafts.registry.CelestialBodyRegistry;
 import org.chabelabela.outer_crafts.world.dimension.OuterCraftsDimensions;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 import java.util.Map;
-import java.util.Set;
 
 /**
- * Draws a parallax sky dome of textured planet billboards.
- * <p>
- * Each body is rendered as a camera-facing emissive quad at a fixed shell radius,
- * scaled by angular size with a per-body minimum so even tiny moons are visible from afar.
- * <p>
- * Registered via {@code RenderLevelStageEvent.AfterTranslucentBlocks} in
- * {@code OuterCrafts.ClientForgeEvents}.
+ * Renders every celestial body as a real 3D textured sphere at its actual
+ * world position, drawn in the {@code AFTER_SKY} render stage so it sits
+ * behind world geometry but in front of the void/star backdrop.
+ *
+ * <p>Replaces the previous flat-billboard approach which broke at distance
+ * (no parallax, fixed shell radius made planets look stuck to the camera,
+ * Z-fought with translucent water/glass).
+ *
+ * <p>Each draw:
+ * <ul>
+ *   <li>The icosphere from {@link PlanetSphereMesh} is scaled by the body's
+ *       radius and translated to the camera-relative position of the body.</li>
+ *   <li>The body's per-id texture is sampled equirectangularly via UVs
+ *       computed from each vertex's normalized position.</li>
+ *   <li>A distance fade prevents the sphere mesh from clipping inside the
+ *       actual world blocks when the player gets close.</li>
+ *   <li>The sun gets a uniform-bright treatment (it's a light source) plus
+ *       an additive {@code sun_glow} halo for OW-style corona.</li>
+ * </ul>
  */
 public final class SpaceSkyRenderer {
 
-    private static final float SHELL_RADIUS = 1500f;
-    private static final float FADE_START_OFFSET = 250f; // alpha=0 at <= r + this
-    private static final float FADE_END_OFFSET = 400f;   // alpha=1 at >= r + this
-
-    /**
-     * Minimum angular size in radians, per body. After the dimension rework with
-     * planet radii of 55–180 blocks at distances 1100–3500 blocks, the real angular
-     * size is usually dominant; these minimums kick in only for very distant viewing.
-     */
-    private static final Map<String, Float> MIN_ANGULAR = Map.ofEntries(
-            Map.entry("sun", 0.18f),
-            Map.entry("timber_hearth", 0.030f),
-            Map.entry("brittle_hollow", 0.030f),
-            Map.entry("giants_deep", 0.038f),
-            Map.entry("dark_bramble", 0.026f),
-            Map.entry("quantum_moon", 0.018f),
-            Map.entry("ash_twin", 0.022f),
-            Map.entry("ember_twin", 0.022f),
-            Map.entry("hollows_lantern", 0.014f)
-    );
-
-    /** Bodies that get an atmospheric halo pass. */
-    private static final Set<String> ATMOSPHERE_BODIES = Set.of(
-            "timber_hearth", "giants_deep", "brittle_hollow"
-    );
+    /** Inside this distance from a planet's centre, the sphere mesh is fully invisible
+     *  (the player has reached the actual world blocks). */
+    private static final float FADE_FULL_HIDE = 30f;
+    /** Past this distance, the sphere is fully opaque. Linear fade between. */
+    private static final float FADE_FULL_SHOW = 60f;
 
     private static final Identifier SUN_GLOW_TEX =
             Identifier.fromNamespaceAndPath(OuterCrafts.MODID, "textures/sky/sun_glow.png");
@@ -67,13 +59,10 @@ public final class SpaceSkyRenderer {
         return Identifier.fromNamespaceAndPath(OuterCrafts.MODID, "textures/sky/" + id + ".png");
     }
 
-    private static Identifier atmosphereTex(String id) {
-        return Identifier.fromNamespaceAndPath(OuterCrafts.MODID, "textures/sky/atmosphere_" + id + ".png");
-    }
-
     /**
      * Called from {@code OuterCrafts.ClientForgeEvents.onRenderLevelStage}.
-     * Only runs when fired as {@code AfterTranslucentBlocks} in the solar system dimension.
+     * Active in the solar-system dimension only. Fired during {@code AFTER_SKY}
+     * so spheres render between vanilla sky and world geometry.
      */
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
         Minecraft mc = Minecraft.getInstance();
@@ -84,147 +73,166 @@ public final class SpaceSkyRenderer {
         Vec3 camPos = camera.position();
         long tick = mc.level.getGameTime();
         Map<String, Vec3> positions = CelestialBodyRegistry.resolveAllPositions(tick);
+        Vec3 sunPos = positions.get("sun");
 
         PoseStack poseStack = event.getPoseStack();
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
-        Matrix4f pose = poseStack.last().pose();
 
-        // Pass 1: planet bodies (emissive translucent so they read as bright)
+        // Pass 1: solid spheres for every body.
         for (Map.Entry<String, Vec3> entry : positions.entrySet()) {
             String id = entry.getKey();
-            if ("twin_center".equals(id)) continue; // virtual orbital anchor
+            if ("twin_center".equals(id)) continue; // virtual orbital anchor, no body
             CelestialBody body = CelestialBodyRegistry.get(id);
-            if (body == null) continue;
+            if (body == null || body.radius() <= 0) continue;
 
-            BillboardPlan plan = computeBillboard(entry.getValue(), camPos, body, id);
-            if (plan == null) continue;
+            Vec3 planetCenter = entry.getValue();
+            float dx = (float) (planetCenter.x - camPos.x);
+            float dy = (float) (planetCenter.y - camPos.y);
+            float dz = (float) (planetCenter.z - camPos.z);
+            float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-            VertexConsumer vc = bufferSource.getBuffer(RenderTypes.entityTranslucentEmissive(bodyTex(id)));
-            emitQuad(vc, pose, plan, plan.alpha, 1.0f);
+            float surfaceDist = dist - (float) body.radius();
+            if (surfaceDist < FADE_FULL_HIDE) continue; // inside the planet → blocks own this view
+            float alpha = surfaceDist >= FADE_FULL_SHOW
+                    ? 1f
+                    : (surfaceDist - FADE_FULL_HIDE) / (FADE_FULL_SHOW - FADE_FULL_HIDE);
+
+            // Sun-direction in body-local space, for Lambert shading on non-sun bodies.
+            Vector3f sunDirLocal;
+            if ("sun".equals(id) || sunPos == null) {
+                sunDirLocal = null; // emissive — no shading
+            } else {
+                double sx = sunPos.x - planetCenter.x;
+                double sy = sunPos.y - planetCenter.y;
+                double sz = sunPos.z - planetCenter.z;
+                double len = Math.sqrt(sx * sx + sy * sy + sz * sz);
+                if (len < 1e-6) sunDirLocal = null;
+                else sunDirLocal = new Vector3f((float)(sx / len), (float)(sy / len), (float)(sz / len));
+            }
+
+            // Use the dynamic supernova-driven sun radius so we visually see it
+            // expand during warning/supernova phases. Otherwise use base radius.
+            float bodyRadius;
+            if ("sun".equals(id)) {
+                float liveRadius = (float) TimeLoopClientState.getSunRadius();
+                bodyRadius = Math.max(liveRadius, (float) body.radius());
+            } else {
+                bodyRadius = (float) body.radius();
+            }
+
+            renderSphere(poseStack, bufferSource, bodyTex(id),
+                    dx, dy, dz, bodyRadius, alpha, sunDirLocal);
         }
 
-        // Pass 2: sun glow (larger, additive-feeling)
-        Vec3 sunPos = positions.get("sun");
+        // Pass 2: additive sun-glow halo (slightly larger than the sun itself).
         if (sunPos != null) {
             CelestialBody sun = CelestialBodyRegistry.get("sun");
-            BillboardPlan sunPlan = computeBillboard(sunPos, camPos, sun, "sun");
-            if (sunPlan != null) {
-                VertexConsumer glow = bufferSource.getBuffer(RenderTypes.entityTranslucentEmissive(SUN_GLOW_TEX));
-                emitQuad(glow, pose, sunPlan, sunPlan.alpha * 0.85f, 3.0f);
+            if (sun != null) {
+                float dx = (float) (sunPos.x - camPos.x);
+                float dy = (float) (sunPos.y - camPos.y);
+                float dz = (float) (sunPos.z - camPos.z);
+                float liveRadius = (float) TimeLoopClientState.getSunRadius();
+                float bodyRadius = Math.max(liveRadius, (float) sun.radius());
+                renderSphere(poseStack, bufferSource, SUN_GLOW_TEX,
+                        dx, dy, dz, bodyRadius * 1.6f, 0.55f, null);
             }
-        }
-
-        // Pass 3: atmospheric halos for bodies that have them
-        for (String id : ATMOSPHERE_BODIES) {
-            Vec3 pos = positions.get(id);
-            if (pos == null) continue;
-            CelestialBody body = CelestialBodyRegistry.get(id);
-            BillboardPlan plan = computeBillboard(pos, camPos, body, id);
-            if (plan == null) continue;
-
-            VertexConsumer halo = bufferSource.getBuffer(RenderTypes.entityTranslucentEmissive(atmosphereTex(id)));
-            emitQuad(halo, pose, plan, plan.alpha * 0.7f, 1.08f);
         }
 
         bufferSource.endBatch();
     }
 
-    /** Per-body billboard geometry. */
-    private record BillboardPlan(float cx, float cy, float cz,
-                                  Vector3f right, Vector3f up,
-                                  float halfSize, float alpha) {}
+    /**
+     * Emit the icosphere as a textured 3D ball at the given camera-relative
+     * offset, scaled to {@code radius}. {@code sunDirLocal} non-null applies
+     * a soft Lambert shading using that direction in body-local space.
+     */
+    private static void renderSphere(PoseStack poseStack,
+                                      MultiBufferSource.BufferSource bufferSource,
+                                      Identifier texture,
+                                      float dx, float dy, float dz,
+                                      float radius,
+                                      float alpha,
+                                      Vector3f sunDirLocal) {
+        if (alpha <= 0f) return;
+        VertexConsumer vc = bufferSource.getBuffer(RenderTypes.entityTranslucentEmissive(texture));
 
-    private static BillboardPlan computeBillboard(Vec3 bodyPos, Vec3 camPos,
-                                                   CelestialBody body, String id) {
-        double dx = bodyPos.x - camPos.x;
-        double dy = bodyPos.y - camPos.y;
-        double dz = bodyPos.z - camPos.z;
-        double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (dist < 1e-3) return null;
+        poseStack.pushPose();
+        poseStack.translate(dx, dy, dz);
+        Matrix4f pose = poseStack.last().pose();
 
-        // Near-field alpha fade.
-        // For the sun, use the dynamic supernova-driven radius from the time-loop
-        // network state so the player visually sees it expand during the warning
-        // and supernova phases. Falls back to body.radius() if the live state is
-        // smaller than the base (e.g. before any payload arrived).
-        float bodyRadius;
-        if ("sun".equals(id)) {
-            float liveRadius = (float) TimeLoopClientState.getSunRadius();
-            float baseRadius = (float) body.radius();
-            bodyRadius = Math.max(liveRadius, baseRadius);
-        } else {
-            bodyRadius = (float) body.radius();
-        }
-        float fadeStart = bodyRadius + FADE_START_OFFSET;
-        float fadeEnd = bodyRadius + FADE_END_OFFSET;
-        float alpha;
-        if (dist <= fadeStart) return null; // fully faded = skip entirely
-        else if (dist >= fadeEnd) alpha = 1f;
-        else alpha = (float) ((dist - fadeStart) / (fadeEnd - fadeStart));
-
-        double inv = 1.0 / dist;
-        float dirX = (float) (dx * inv);
-        float dirY = (float) (dy * inv);
-        float dirZ = (float) (dz * inv);
-
-        // Angular size — real, clamped to per-body minimum
-        float minAngular = MIN_ANGULAR.getOrDefault(id, 0.015f);
-        float trueAngular = (float) (2.0 * Math.atan(bodyRadius / dist));
-        float angular = Math.max(trueAngular, minAngular);
-        float halfSize = SHELL_RADIUS * (float) Math.tan(angular * 0.5);
-
-        // Build camera-facing basis
-        Vector3f dir = new Vector3f(dirX, dirY, dirZ);
-        Vector3f worldUp = new Vector3f(0f, 1f, 0f);
-        Vector3f right = new Vector3f(worldUp).cross(dir);
-        if (right.lengthSquared() < 1e-6f) {
-            right.set(1f, 0f, 0f);
-        }
-        right.normalize();
-        Vector3f up = new Vector3f(dir).cross(right).normalize();
-
-        float cx = dirX * SHELL_RADIUS;
-        float cy = dirY * SHELL_RADIUS;
-        float cz = dirZ * SHELL_RADIUS;
-
-        return new BillboardPlan(cx, cy, cz, right, up, halfSize, alpha);
-    }
-
-    private static void emitQuad(VertexConsumer vc, Matrix4f pose, BillboardPlan plan,
-                                  float alpha, float scaleMul) {
-        float s = plan.halfSize * scaleMul;
-        float rx = plan.right.x * s, ry = plan.right.y * s, rz = plan.right.z * s;
-        float ux = plan.up.x * s,    uy = plan.up.y * s,    uz = plan.up.z * s;
-        int argb = packAlpha(alpha);
+        int alphaInt = Math.round(Math.max(0f, Math.min(1f, alpha)) * 255f);
         int light = 0x00F000F0;
         int overlay = OverlayTexture.NO_OVERLAY;
 
-        // Normal points back toward camera (opposite of view direction into scene)
-        float nx = -plan.right.y * plan.up.z + plan.right.z * plan.up.y;
-        float ny = -plan.right.z * plan.up.x + plan.right.x * plan.up.z;
-        float nz = -plan.right.x * plan.up.y + plan.right.y * plan.up.x;
+        int triCount = PlanetSphereMesh.triangleCount();
+        for (int t = 0; t < triCount; t++) {
+            int ia = PlanetSphereMesh.triA(t);
+            int ib = PlanetSphereMesh.triB(t);
+            int ic = PlanetSphereMesh.triC(t);
 
-        // BL (0,1), BR (1,1), TR (1,0), TL (0,0)
-        quadVertex(vc, pose, plan.cx - rx - ux, plan.cy - ry - uy, plan.cz - rz - uz, argb, 0f, 1f, overlay, light, nx, ny, nz);
-        quadVertex(vc, pose, plan.cx + rx - ux, plan.cy + ry - uy, plan.cz + rz - uz, argb, 1f, 1f, overlay, light, nx, ny, nz);
-        quadVertex(vc, pose, plan.cx + rx + ux, plan.cy + ry + uy, plan.cz + rz + uz, argb, 1f, 0f, overlay, light, nx, ny, nz);
-        quadVertex(vc, pose, plan.cx - rx + ux, plan.cy - ry + uy, plan.cz - rz + uz, argb, 0f, 0f, overlay, light, nx, ny, nz);
+            float ax = PlanetSphereMesh.vx(ia), ay = PlanetSphereMesh.vy(ia), az = PlanetSphereMesh.vz(ia);
+            float bx = PlanetSphereMesh.vx(ib), by = PlanetSphereMesh.vy(ib), bz = PlanetSphereMesh.vz(ib);
+            float cx = PlanetSphereMesh.vx(ic), cy = PlanetSphereMesh.vy(ic), cz = PlanetSphereMesh.vz(ic);
+
+            float au = PlanetSphereMesh.uvU(ax, az), av = PlanetSphereMesh.uvV(ay);
+            float bu = PlanetSphereMesh.uvU(bx, bz), bv = PlanetSphereMesh.uvV(by);
+            float cu = PlanetSphereMesh.uvU(cx, cz), cv = PlanetSphereMesh.uvV(cy);
+
+            // Detect equirectangular seam crossing: if the three U coords span
+            // more than half the texture, one of the verts has wrapped. Shift
+            // the wrapped one(s) by ±1 so the triangle stays in a consistent
+            // U-band and the texture doesn't snap across the whole planet.
+            float uMin = Math.min(au, Math.min(bu, cu));
+            float uMax = Math.max(au, Math.max(bu, cu));
+            if (uMax - uMin > 0.5f) {
+                if (au < 0.5f) au += 1f;
+                if (bu < 0.5f) bu += 1f;
+                if (cu < 0.5f) cu += 1f;
+            }
+
+            int colorA = shadedColor(alphaInt, ax, ay, az, sunDirLocal);
+            int colorB = shadedColor(alphaInt, bx, by, bz, sunDirLocal);
+            int colorC = shadedColor(alphaInt, cx, cy, cz, sunDirLocal);
+
+            // Emit triangle as a degenerate quad (vc's render type expects quads).
+            putVertex(vc, pose, ax * radius, ay * radius, az * radius, colorA, au, av, light, overlay, ax, ay, az);
+            putVertex(vc, pose, bx * radius, by * radius, bz * radius, colorB, bu, bv, light, overlay, bx, by, bz);
+            putVertex(vc, pose, cx * radius, cy * radius, cz * radius, colorC, cu, cv, light, overlay, cx, cy, cz);
+            // Degenerate fourth vertex = repeat C
+            putVertex(vc, pose, cx * radius, cy * radius, cz * radius, colorC, cu, cv, light, overlay, cx, cy, cz);
+        }
+
+        poseStack.popPose();
     }
 
-    private static void quadVertex(VertexConsumer vc, Matrix4f pose,
-                                    float x, float y, float z, int argb,
-                                    float u, float v, int overlay, int light,
-                                    float nx, float ny, float nz) {
+    /**
+     * Lambert shading. Returns ARGB.
+     * - sunDirLocal == null: emissive white (full brightness).
+     * - else: ambient 0.35 + 0.65 * max(0, n·l), so the night side stays visible.
+     */
+    private static int shadedColor(int alphaInt, float nx, float ny, float nz, Vector3f sunDirLocal) {
+        float brightness;
+        if (sunDirLocal == null) {
+            brightness = 1f;
+        } else {
+            float lambert = nx * sunDirLocal.x + ny * sunDirLocal.y + nz * sunDirLocal.z;
+            if (lambert < 0f) lambert = 0f;
+            brightness = 0.35f + 0.65f * lambert;
+        }
+        int rgb = Math.round(brightness * 255f);
+        return (alphaInt << 24) | (rgb << 16) | (rgb << 8) | rgb;
+    }
+
+    @SuppressWarnings("unused") // Vector4f import retained for future Lambert tweaks
+    private static void putVertex(VertexConsumer vc, Matrix4f pose,
+                                   float x, float y, float z, int argb,
+                                   float u, float v, int light, int overlay,
+                                   float nx, float ny, float nz) {
         vc.addVertex(pose, x, y, z)
                 .setColor(argb)
                 .setUv(u, v)
                 .setOverlay(overlay)
                 .setLight(light)
                 .setNormal(nx, ny, nz);
-    }
-
-    private static int packAlpha(float alpha) {
-        int ai = Math.round(Math.max(0f, Math.min(1f, alpha)) * 255f);
-        return (ai << 24) | 0x00FFFFFF;
     }
 }
